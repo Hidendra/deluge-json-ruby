@@ -1,5 +1,6 @@
 require 'httparty'
 require 'json'
+require 'base64'
 require 'deluge/response'
 
 ##
@@ -105,15 +106,34 @@ class Deluge
   end
 
   ##
+  # Starts downloading a torrent file.
+  #
+  # @param file_name The name of the .torrent file.
+  # @param file_contents The contents of the .torrent file.
+  def add_torrent_file(file_name, file_contents, options = {})
+    file_encoded = Base64.encode64(file_contents)
+
+    send_request('core.add_torrent_file', [file_name, file_encoded, options])
+  end
+
+  ##
   # Starts downloading a torrent URL (either a path to a torrent file or a magnet link).
   #
   # @param url (see #add_torrent_params)
-  # @param download_location (see #add_torrent_params)
-  # @param move_completed_path (see #add_torrent_params)
-  def add_torrent_url(url, download_location, move_completed_path)
-    params = add_torrent_params(url, download_location, move_completed_path)
+  # @param options Optiosn to add for the torrent
+  def add_torrent_url(url, options={})
+    params = add_torrent_params(url, options)
 
     send_request('web.add_torrents', params).result
+  end
+
+  ##
+  # Removes a torrent from the client
+  #
+  # @param torrent_id The ID of the torrent to remove (aka info hash).
+  # @param remove_data True if the torrent data should be removed.
+  def remove_torrent(torrent_id, remove_data: false)
+    send_request('core.remove_torrent', [torrent_id, remove_data]).result
   end
 
   ##
@@ -183,15 +203,10 @@ class Deluge
   # @param url The torrent or magnet URL
   # @param download_location The directory to place the torrent's file(s) in
   # @param move_completed_path The path to move the torrent to, once complete (if applicable)
-  def add_torrent_params(url, download_location, move_completed_path)
+  def add_torrent_params(url, options)
     [[{
       path: url,
-      options: {
-        add_paused: false, compact_allocation: false, download_location: download_location,
-        file_priorities: [], max_connections: -1, max_download_speed: -1,
-        max_upload_slots: -1, max_upload_speed: -1, move_completed: false,
-        move_completed_path: move_completed_path, prioritize_first_last_pieces: false
-      }
+      options: options
     }]]
   end
 end
